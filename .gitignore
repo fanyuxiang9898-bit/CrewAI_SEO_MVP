@@ -1,0 +1,10 @@
+.env 
+__pycache__/ 
+venv/ 
+env/ 
+
+# Local credentials
+.env.*
+!.env.example
+*.pem
+*.key
