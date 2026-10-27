@@ -1,5 +1,7 @@
 """Read-only API contract, missing-data recovery and static-file boundary tests."""
 import json
+import base64
+import os
 import sqlite3
 import tempfile
 import threading
@@ -9,7 +11,7 @@ from pathlib import Path
 from http.server import ThreadingHTTPServer
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
-from web_server import handler_for
+from web_server import handler_for, worker_environment
 
 
 class WorkbenchTests(unittest.TestCase):
@@ -69,6 +71,25 @@ class WorkbenchTests(unittest.TestCase):
         with self.assertRaises(HTTPError) as error:
             urlopen(request)
         self.assertEqual(error.exception.code,403)
+
+    def test_telemetry_settings_are_child_only(self):
+        before = dict(os.environ)
+        child = worker_environment()
+        self.assertEqual(child['CREWAI_TELEMETRY_OPT_OUT'], 'true')
+        self.assertEqual(child['OTEL_SDK_DISABLED'], 'true')
+        self.assertEqual(child['CREWAI_TRACING_ENABLED'], 'false')
+        self.assertEqual(dict(os.environ), before)
+        self.assertIsNot(child, os.environ)
+
+    def test_public_origin_requires_authentication_for_page_and_api(self):
+        self.server.RequestHandlerClass = handler_for(self.db, public_origin='https://studio.example', access_token='a-test-password-of-24-characters')
+        for path in ['/', '/api/status', '/api/articles']:
+            with self.assertRaises(HTTPError) as error:
+                urlopen(Request(self.base+path, headers={'Host':'studio.example'}))
+            self.assertEqual(error.exception.code, 401)
+        encoded = base64.b64encode(b'user:a-test-password-of-24-characters').decode()
+        with urlopen(Request(self.base+'/api/articles', headers={'Host':'studio.example','Authorization':'Basic '+encoded})) as response:
+            self.assertEqual(response.status, 200)
 
 
 if __name__=='__main__':

@@ -8,3 +8,7 @@ env/
 !.env.example
 *.pem
 *.key
+.venv/
+generation.local.json
+data/workbench-jobs.sqlite3*
+work/

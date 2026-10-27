@@ -2,19 +2,46 @@
 
 ## Content Studio 网页工作台
 
-使用 Python 3.10+ 启动：
+Python 3.10–3.13。只浏览历史内容时无需额外依赖：`python web_server.py`，打开 http://127.0.0.1:8766 。
+
+启用 AI 生成（建议独立虚拟环境）：
 
 ```sh
-python web_server.py
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements-web.txt
+# 将 generation.example.json 复制为 generation.local.json，填写实际模型地址和模型名
+.venv/Scripts/python web_server.py --generation-config generation.local.json
 ```
 
-打开 `http://127.0.0.1:8766`。无需安装额外依赖。支持内容概览、搜索与主题筛选、排序分页、文章阅读、迭代记录、Markdown 导出和可编辑创作草稿，适配桌面与手机。
+Linux/macOS 使用 `.venv/bin/python`。网页运行依赖与旧命令行的 `requirements.txt` 分开，避免旧版本 CrewAI 冲突。
 
-工作台只读现有 `data/seo_content.db`，不会导入模型配置、修改环境变量或自动调用模型。所有 CTR 均明确标记为模拟指标。创作草稿保存在当前浏览器的 localStorage，可导出；不代表已执行 CrewAI 任务。现有命令行创作流程保持不变。
+- 在网页创建任务，或将浏览器草稿转为任务；真实 CrewAI 依次执行研究、撰写、评批，并传递前一阶段输出。
+- 进度按实际阶段更新，支持取消、显式重试、刷新后查看记录，以及 Markdown 文章下载。任务串行执行，最多 5 项待处理任务；重复请求使用幂等键，不重复生成。
+- 任务与阶段结果写入 `data/workbench-jobs.sqlite3`。服务重启后未完成任务标记为中断，保留已有结果，不自动重跑模型。
+- 历史文章数据库只读，原有 CTR 是模拟指标；新生成内容可在 AI 任务页查阅，不写入旧文章表。
+- 模型使用兼容 OpenAI 的 chat/completions 接口。凭据放在独立文件，通过 `api_key_file` 引用；不要放进前端、提交 Git 或发送给别人。配置、任务库与虚拟环境已忽略。
+- 默认只允许本机模型。远程模型须使用 HTTPS 并明确配置 `allow_remote_model: true`，启用前自行确认额度和费用。本机模型的 loopback 地址不能供云端访问。
+- 只在模型任务子进程中设置 `CREWAI_TELEMETRY_OPT_OUT=true`、`OTEL_SDK_DISABLED=true`、`CREWAI_TRACING_ENABLED=false`，关闭遥测和追踪；不修改父进程、用户或系统环境。
 
-可使用 `python web_server.py --port 8766 --database path/to/seo_content.db` 指定已有数据库。服务仅监听本机，不能直接用于公网部署。静态文件采用白名单，不提供数据库、配置文件或凭据下载。
+公网部署需要 HTTPS 反向代理、持久化任务目录和云端可访问的模型服务。以下是启动配置示例，不代表已部署：
 
-验证：`python -m unittest discover -s tests -p test_web.py`。浏览器回归使用已有 Playwright：`node tests/browser.cjs <playwright模块路径> <浏览器可执行文件路径> http://127.0.0.1:8766`。不修改已有数据，也不调用付费模型。
+```sh
+python web_server.py --host 0.0.0.0 --port 8766 --public-origin https://your-domain.example --access-token-file /run/secrets/workbench-password --generation-config /run/secrets/generation.json --jobs-database /persistent/workbench-jobs.sqlite3
+```
+
+密码文件至少 24 个字符；浏览器登录用户名可任意，密码使用该文件内容。反向代理须保留 Host、Authorization 和 Origin，并限制请求体、连接数和超时。仅运行一个工作台实例；SQLite 队列不支持多个实例竞争恢复状态。静态文件白名单禁止下载数据库及配置，写入 API 校验 Origin、CSRF 和输入长度。
+
+验证：
+
+```sh
+python -m unittest discover -s tests -p 'test_*.py'
+node tests/browser.cjs <playwright模块路径> <浏览器可执行文件路径> http://127.0.0.1:8766
+node tests/browser-jobs.cjs <playwright模块路径> <浏览器可执行文件路径> http://127.0.0.1:8766
+```
+
+上述测试不调用付费模型。`tests/browser-real-generation.cjs` 为显式运行的真实模型端到端测试，使用相同三个参数，并可加第四个参数指定截图路径；会实际创建一项生成任务，应先确认模型费用。
+
+以下为原命令行版本说明：
 
 一个基于 **CrewAI** 框架的工业级多智能体系统，实现了 SEO 内容创作的自动化和持续迭代优化。
 
