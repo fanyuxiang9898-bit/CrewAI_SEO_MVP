@@ -1,0 +1,9 @@
+{
+  "endpoint": "http://127.0.0.1:8088/v1/chat/completions",
+  "model": "Qwen3.5-4B-Q4_K_M",
+  "api_key_file": null,
+  "allow_remote_model": false,
+  "request_timeout": 150,
+  "job_timeout": 900,
+  "max_tokens": 1600
+}
