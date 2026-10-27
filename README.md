@@ -1,5 +1,21 @@
 # 🚀 SEO 内容营销自迭代 Agent 系统
 
+## Content Studio 网页工作台
+
+使用 Python 3.10+ 启动：
+
+```sh
+python web_server.py
+```
+
+打开 `http://127.0.0.1:8766`。无需安装额外依赖。支持内容概览、搜索与主题筛选、排序分页、文章阅读、迭代记录、Markdown 导出和可编辑创作草稿，适配桌面与手机。
+
+工作台只读现有 `data/seo_content.db`，不会导入模型配置、修改环境变量或自动调用模型。所有 CTR 均明确标记为模拟指标。创作草稿保存在当前浏览器的 localStorage，可导出；不代表已执行 CrewAI 任务。现有命令行创作流程保持不变。
+
+可使用 `python web_server.py --port 8766 --database path/to/seo_content.db` 指定已有数据库。服务仅监听本机，不能直接用于公网部署。静态文件采用白名单，不提供数据库、配置文件或凭据下载。
+
+验证：`python -m unittest discover -s tests -p test_web.py`。浏览器回归使用已有 Playwright：`node tests/browser.cjs <playwright模块路径> <浏览器可执行文件路径> http://127.0.0.1:8766`。不修改已有数据，也不调用付费模型。
+
 一个基于 **CrewAI** 框架的工业级多智能体系统，实现了 SEO 内容创作的自动化和持续迭代优化。
 
 ## 📋 目录结构
